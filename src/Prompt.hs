@@ -1,11 +1,10 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
-module Prompt(P, Prompt, runP, newPrompt, eqPrompt) where
+module Prompt(P, Prompt, runP, newPromptName, eqPrompt) where
 
 import Data.Bifunctor
 import Data.Type.Equality
 import Unsafe.Coerce
---import GHC.Prim
 
 newtype P ans a = P (Int -> (Int, a))
 newtype Prompt ans a = Prompt Int
@@ -34,8 +33,8 @@ instance Monad (P ans) where
 runP :: P ans ans -> ans
 runP p = snd (unP p 0)
 
-newPrompt :: P ans (Prompt ans a)
-newPrompt = P (\np -> (np+1, Prompt np))
+newPromptName :: P ans (Prompt ans a)
+newPromptName = P (\np -> (np+1, Prompt np))
 
 eqPrompt :: Prompt r a -> Prompt r b -> Maybe (a :~: b)
 eqPrompt (Prompt p1) (Prompt p2)

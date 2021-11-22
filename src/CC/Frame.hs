@@ -6,27 +6,27 @@ module CC.Frame where
 import Unsafe.Coerce
 import Data.Type.Equality
 import Seq
-import qualified Prompt
+import Prompt
 
 newtype Frame ans a b = Frame (a -> CC ans b)
 type Cont ans a = Seq Frame ans a
 type SubCont ans a b = SubSeq Frame ans a b
 
-newtype CC ans a = CC (Cont ans a -> Prompt.P ans ans)
+newtype CC ans a = CC (Cont ans a -> P ans ans)
+
+unCC :: CC ans a -> Cont ans a -> P ans ans
 unCC (CC e) = e
 
 instance Functor (CC ans) where
-  fmap f (CC ak) = CC (\k -> ak (PushSeg (Frame (pure . f)) k))
+  fmap f (CC ak) = CC (ak . PushSeg (Frame (pure . f)))
 
 instance Applicative (CC ans) where
   pure v = CC (\k -> appk k v)
-  (CC fk) <*> (CC xk) = undefined
-  --liftA2 f (CC xk) (CC yk) = CC (\k -> let a = xk (PushSeg (Frame (pure . f)) k) in _)
-
+  (CC fk) <*> x = CC (fk . PushSeg (Frame (\g -> fmap g x)))
 
 instance Monad (CC ans) where
   return = pure
-  (CC e1) >>= e2 = CC (\k -> e1 (PushSeg (Frame e2) k))
+  (CC e1) >>= e2 = CC (e1 . PushSeg (Frame e2))
 
 appseg :: Frame ans a b -> a -> CC ans b
 appseg (Frame fr) = fr
@@ -41,3 +41,17 @@ runTerm c = unCC c (unsafeCoerce EmptySeq)
 
 runCC :: (forall ans. CC ans a) -> a
 runCC ce = Prompt.runP (runTerm ce)
+
+newPrompt :: CC ans (Prompt ans a)
+newPrompt = CC (\k -> do p <- newPromptName; appk k p)
+
+pushPrompt :: Prompt ans a -> CC ans a -> CC ans a
+pushPrompt p (CC e) = CC (e . PushP p)
+
+withSubCont :: Prompt ans b -> (SubCont ans a b -> CC ans b) -> CC ans a
+withSubCont p f = CC (\k -> 
+  let (subk, k') = splitSeq p k
+    in unCC (f subk) k')
+
+pushSubCont :: SubCont ans a b -> CC ans a -> CC ans b
+pushSubCont subk (CC e) = CC (e  . pushSeq subk)
