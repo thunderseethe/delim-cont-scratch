@@ -15,6 +15,7 @@ version:            0.1.0.0
 -- license:
 author:             thunderseethe
 maintainer:         thunderseethe.dev@gmail.com
+build-type:         Simple
 
 -- A copyright notice.
 -- copyright:
@@ -25,30 +26,45 @@ extra-source-files:
 
 library
     exposed-modules:
+        Interp.CBV
+        AST
         Seq
-        Sema
         Lib
-        Parser
         Prompt
+        Parser
+        Parsing
+        Ty
         CC.Frame
         CC.Func
         CC.Control
         CC.CPS
+        Text.Trifecta.Indentation
 
     -- Modules included in this library but not exported.
     -- other-modules:
-    other-extensions: GADTs RankNTypes TypeOperators LambdaCase InstanceSigs
+    other-extensions: GADTs RankNTypes TypeOperators LambdaCase InstanceSigs TemplateHaskell
     build-depends:    
         base ^>=4.14.2.0
+        ,composition ^>= 1.0.2.2
         ,hashable ^>= 1.3.0.0
         ,megaparsec ^>= 9.0.1
-        ,mtl ^>= 2.2.2
-        ,parser-combinators ^>= 1.2.1
-        ,recursion-schemes ^>= 5.2.2.2
+        ,parsers ^>= 0.12.10
+        ,prettyprinter ^>= 1.7.1
+        ,prettyprinter-ansi-terminal ^>= 1.1.3
+        ,recursion-schemes ^>=5.2.2.1
         ,text ^>= 1.2.4.1
+        ,transformers ^>=0.5.6.2
+        ,trifecta ^>= 2.2.2
         ,unordered-containers ^>= 0.2.14.0
     hs-source-dirs:   src
     default-language: Haskell2010
+
+test-suite test
+    type: exitcode-stdio-1.0
+    hs-source-dirs: test
+    main-is: Main.hs
+    default-language: Haskell2010
+    build-depends: base, delim-cont, HTF, text, trifecta, heredoc
 
 executable delim-cont
     main-is:          Main.hs

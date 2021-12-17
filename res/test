@@ -1,0 +1,14 @@
+fun testLet =
+  let
+    a = 4
+    b = 6
+    id = \x -> x
+   in (id a) + b
+
+fun id x = x
+fun k x y = x
+
+fun const = 4
+
+fun test x = \y -> x
+

@@ -6,8 +6,8 @@ data Ins
     = NewPrompt
 
 data Machine = Machine
-    { code :: [Ins]
-    , stack :: [Int]
-    , heap :: [Int]
-    , prompts :: [Prompt]
+    { machCode :: [Ins]
+    , machStack :: [Int]
+    , machHeap :: [Int]
+    , machPrompts :: [Prompt]
     }

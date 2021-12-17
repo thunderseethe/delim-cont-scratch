@@ -1,125 +1,52 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Parser (ParseTerm(..), ParseDefn(..), ParseProgram(..), parseProgram, printProgram, parseFile, printFile) where
+module Parser where
 
-import Control.Applicative.Combinators.NonEmpty (some)
-import Control.Monad
-import Control.Monad.Identity (Identity)
-import Data.Char
-import Data.HashMap.Strict
-import Data.HashSet (HashSet)
-import qualified Data.HashSet as HashSet
-import Data.List.NonEmpty
-import Data.Text
-import qualified Data.Text.IO as TIO
-import Data.Void
-import Text.Megaparsec hiding (some)
-import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
-import qualified Text.Printf as Text
+import Control.Applicative (Alternative, Applicative (liftA2))
+import Control.Monad (MonadPlus)
+import Control.Monad.Trans.Class (MonadTrans (lift))
+import Control.Monad.Trans.Reader
+import Data.Char (isSpace)
+import Debug.Trace
+import Text.Parser.Char (CharParsing)
+import Text.Trifecta (TokenParsing)
+import Text.Trifecta hiding (Parser)
+import qualified Text.Trifecta as Trifecta
+import Text.Trifecta.Indentation
+import Control.Monad.Trans.State.Lazy (StateT(runStateT), get, put)
 
-type Parser = Parsec Void Text
+newtype Parser a = Parser {runParser :: IndentedT Char (ReaderT Bool Trifecta.Parser) a}
+  deriving (Functor, Applicative, Alternative, Monad, MonadPlus, CharParsing)
 
-data ParseTerm
-  = PVar Text
-  | PNum Int
-  | PAbs (NonEmpty Text) ParseTerm
-  | PApp (NonEmpty ParseTerm)
-  | PLet (HashMap Text ParseTerm) ParseTerm
-  deriving (Show)
+instance Parsing Parser where
+  try (Parser m) = Parser $ try m
+  Parser m <?> lbl = Parser $ m <?> lbl
+  notFollowedBy (Parser m) = Parser $ notFollowedBy m
+  unexpected = Parser . unexpected
+  eof = Parser eof
 
-data ParseDefn = ParseDefn
-  { name :: Text
-  , args :: [Text]
-  , body :: ParseTerm
-  } deriving (Show)
+newlineSensitive :: Parser a -> Parser a
+newlineSensitive (Parser p) = Parser $ mapIndentedT (local (const True)) p
 
-newtype ParseProgram = ParseProgram (NonEmpty ParseDefn)
-  deriving (Show)
+instance TokenParsing Parser where
+  nesting (Parser m) = Parser $ nesting m
 
-sc :: Parser ()
-sc = L.space space1 (L.skipLineComment "//") (L.skipBlockCommentNested "/*" "*/")
+  -- Special case logic to not eat newlines while handling indentation correctly
+  someSpace =
+    let (<&&>) = liftA2 (&&)
+     in Parser $ IndentedT $ do
+          nlSensitive <- lift ask
+          skipSome . satisfy $ if nlSensitive
+            then trace "newline sensitive" $ (/= '\n') <&&> isSpace
+            else isSpace
 
-lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
+  semi = Parser semi
 
-symbol :: Text -> Parser Text
-symbol = L.symbol sc
+  highlight h (Parser m) = Parser $ highlight h m
 
-keyword :: Text -> Parser Text
-keyword = lexeme . string
-
-integer :: Parser Int
-integer = lexeme L.decimal
-
-reserved :: HashSet Text
-reserved = HashSet.fromList ["let", "in"]
-
-ident :: Parser Text
-ident = lexeme $ do
-  i <- satisfy (\c -> isAlpha c || c == '_')
-  is <- many (alphaNumChar <|> char '-' <|> char '_')
-  let id = pack (i : is)
-  when (HashSet.member id reserved) (fail "Identifier cannot be a reserved word")
-  return id
-
-closure :: Parser ParseTerm
-closure =
-  PAbs
-    <$> (symbol "\\" *> some ident)
-    <*> (symbol "." *> expr)
-
-plet :: Parser ParseTerm
-plet =
-  PLet
-    <$> (keyword "let" *> defns)
-    <*> (keyword "in" *> expr)
-  where
-    defns :: Parser (HashMap Text ParseTerm)
-    defns = Data.HashMap.Strict.fromList . Data.List.NonEmpty.toList <$> some1 ((,) <$> (ident <* symbol "=") <*> expr)
-
-term :: Parser ParseTerm
-term =
-  (PVar <$> ident)
-    <|> (PNum <$> integer)
-    <|> closure
-    <|> between (symbol "(") (symbol ")") expr
-
-expr :: Parser ParseTerm
-expr = app <$> some term
-  where
-    -- If we only have one term it's not an app, otherwise make it an app
-    app = \case
-      term :| [] -> term
-      terms -> PApp terms
-
-defn :: Parser ParseDefn
-defn =
-  ParseDefn
-    <$> ident
-    <*> many ident
-    <*> (symbol "=" *> expr)
-
-program :: Parser ParseProgram
-program = ParseProgram <$> some defn
-
-parseProgram :: Text -> Either (ParseErrorBundle Text Void) ParseProgram
-parseProgram = runParser program ""
-
-parseFile :: FilePath -> IO (Either (ParseErrorBundle Text Void) ParseProgram)
-parseFile filename = do
-  contents <- TIO.readFile filename
-  return $ runParser program filename contents
-
-printFile :: FilePath -> IO ()
-printFile filename = do
-  t <- parseFile filename
-  case t of
-    Left error -> putStr $ errorBundlePretty error
-    Right prog -> print prog
-
-printProgram :: Text -> IO ()
-printProgram source = case parseProgram source of
-  Left error -> putStrLn $ errorBundlePretty error
-  Right prog -> print prog
+instance IndentationParsing Parser where
+  localTokenMode fRel (Parser m) = Parser $ localTokenMode fRel m
+  localIndentation rel (Parser m) = Parser $ localIndentation rel m
+  absoluteIndentation (Parser m) = Parser $ absoluteIndentation m
+  ignoreAbsoluteIndentation (Parser m) = Parser $ ignoreAbsoluteIndentation m
