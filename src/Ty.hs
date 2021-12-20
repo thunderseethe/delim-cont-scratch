@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module Ty where
 
+import Data.Text
 import Data.Functor.Foldable.TH
 
 data BaseTy = BaseInt
@@ -13,7 +14,12 @@ data BaseTy = BaseInt
 
 data Ty
   = Base BaseTy
+  | TyVar Text
   | Fun Ty Ty
   deriving (Show, Eq)
 
 makeBaseFunctor ''Ty
+
+infixr 9 ->>
+
+x ->> y = Fun x y

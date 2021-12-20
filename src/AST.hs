@@ -34,25 +34,23 @@ infixl 9 <@>
 (<@>) :: Term a -> Term a -> Term a
 x <@> y = App x y
 
-data Defn a = Defn
-  { name :: Text,
-    args :: [Text],
-    body :: Term a
-  } deriving (Show)
+data FnDefn a = FnDefn
+  { fnName :: Text
+  , args :: [Text]
+  , sig :: Ty
+  -- Todo figure out if this is the best way to store this
+  , constraints :: [(Text, [Text])]
+  , body :: Term a
+  } deriving (Show, Eq)
 
-newtype Program a = Program (NonEmpty (Defn a))
-    deriving (Show)
+data EffDefn = EffDefn
+  { effName :: Text
+  , sigArgs :: [Text]
+  , sigs :: [(Text, Ty)]
+  } deriving (Show, Eq)
 
-{-lowerParse :: ParseProgram -> Program Text
-lowerParse (ParseProgram defns) = Program $ fmap toDefn defns
-  where
-    toDefn (ParseDefn name args body) = Defn name args (desugar body)
- 
-    desugar :: ParseTerm -> Term Text
-    desugar = \case
-        PVar name -> Var name
-        PNum i -> Num i
-        PLet defns body -> Let (desugar <$> defns) (desugar body)
-        PApp (hd :| terms) -> foldl' App (desugar hd) $ desugar <$> terms
-        PAbs (hd :| args) body -> foldr Abs (desugar body) (hd:args)-}
+data Program a = Program 
+  { funs :: [FnDefn a]
+  , effs :: [EffDefn]
+  } deriving (Show, Eq)
 

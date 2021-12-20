@@ -16,7 +16,7 @@ import qualified Text.Trifecta as Trifecta
 import Text.Trifecta.Indentation
 import Control.Monad.Trans.State.Lazy (StateT(runStateT), get, put)
 
-newtype Parser a = Parser {runParser :: IndentedT Char (ReaderT Bool Trifecta.Parser) a}
+newtype Parser a = Parser { runParser :: IndentedT Char (ReaderT Bool Trifecta.Parser) a }
   deriving (Functor, Applicative, Alternative, Monad, MonadPlus, CharParsing)
 
 instance Parsing Parser where
@@ -38,7 +38,7 @@ instance TokenParsing Parser where
      in Parser $ IndentedT $ do
           nlSensitive <- lift ask
           skipSome . satisfy $ if nlSensitive
-            then trace "newline sensitive" $ (/= '\n') <&&> isSpace
+            then (/= '\n') <&&> isSpace
             else isSpace
 
   semi = Parser semi

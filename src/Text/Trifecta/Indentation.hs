@@ -69,13 +69,13 @@ deriving instance (MonadFail m, DeltaParsing m) => DeltaParsing (IndentedT Token
 deriving instance (MonadFail m, MarkParsing Delta m) => MarkParsing Delta (IndentedT Token m)
 
 instance (MonadFail m, DeltaParsing m) => CharParsing (IndentedT Char m) where
-  satisfy f = checkIndentation $ satisfy (\c -> trace (show c) (f c))
+  satisfy f = checkIndentation (satisfy f)
 
 instance (MonadFail m, DeltaParsing m) => TokenParsing (IndentedT Char m) where
-  someSpace = IndentedT $ trace "someSpace" someSpace
+  someSpace = IndentedT someSpace
 
 instance (DeltaParsing m) => CharParsing (IndentedT Token m) where
-  satisfy f = IndentedT $ satisfy f
+  satisfy f = IndentedT (satisfy f)
 
 instance (MonadFail m, DeltaParsing m) => TokenParsing (IndentedT Token m) where
   token = checkIndentation . token . unIndentedT
@@ -91,7 +91,7 @@ checkIndentation :: (MonadFail m, DeltaParsing m) => LazyState.StateT IndentStat
 checkIndentation m = IndentedT $ do
   is <- get
   p <- position
-  trace ("column " ++ show (column p)) $ updateIndentation is (fromIntegral $ column p) ok fail
+  updateIndentation is (fromIntegral $ column p) ok fail
  where
   ok is = do
     x <- m
@@ -171,17 +171,13 @@ localIndentation' localState rel m =
     Any -> go localState (const 0) (const infInd) const m
     Const c -> go localState (const c) (const c) const m
     Ge -> go localState id (const infInd) (\_ x -> x) m
-    Gt ->
-      let f hi hi'
-            | hi' == infInd || hi < hi' = hi
-            | hi' > 0 = hi' - 1
-            | otherwise = error "localIndentation': assertion failed: hi' > 0"
-       in go localState (+ 1) (const infInd) f m
+    Gt -> go localState (+ 1) (const infInd) f m
  where
   f hi hi' 
     | hi' == infInd || hi < hi' = hi
     | hi' > 09 = hi' - 1
     | otherwise = error "localIndentation': assertion failed: hi' > 0"
+
   go localState fLo fHi fHi' =
     let pre (IndentState lo hi mode _) =
           IndentState (fLo lo) (fHi hi) mode rel
