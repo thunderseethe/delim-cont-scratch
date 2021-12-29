@@ -25,6 +25,7 @@ import Text.Trifecta hiding (Parser, ident, reserve, runParser, symbol)
 import qualified Text.Trifecta as Trifecta
 import Text.Trifecta.Indentation
 import Ty
+import Prelude hiding (abs)
 
 identStyle :: IdentifierStyle Parser
 identStyle =
@@ -32,7 +33,7 @@ identStyle =
     { _styleName = "identifier"
     , _styleStart = letter <|> char '_'
     , _styleLetter = alphaNum <|> oneOf "_'"
-    , _styleReserved = fromList ["let", "eff", "fn", "in", "where"]
+    , _styleReserved = fromList ["let", "eff", "fn", "in", "where", "handle"]
     , _styleHighlight = Identifier
     , _styleReservedHighlight = ReservedIdentifier
     }
@@ -66,6 +67,12 @@ reserve = Token.reserveText identStyle
 symbol :: Text -> Parser Text
 symbol = textSymbol
 
+abs :: Parser a -> Parser a
+abs = absoluteIndentation
+
+indent :: IndentationRel -> Parser a -> Parser a
+indent = localIndentation
+
 baseTy :: Parser BaseTy
 baseTy = BaseInt <$ reserve "Int"
 
@@ -78,13 +85,12 @@ atomicTy =
 ty :: Parser Ty
 ty = foldr1 Fun <$> funTys
  where
-  funTys = (:) <$> atomicTy <*> many (indent $ symbol "->" *> ty)
-  indent = localIndentation Ge . absoluteIndentation
+  funTys = (:) <$> atomicTy <*> many (indent Ge $ abs $ symbol "->" *> ty)
 
 closure :: Parser (Term Text)
 closure =
-  between (symbolic '{') (localIndentation Any $ symbolic '}') $
-    localIndentation Gt body
+  between (symbolic '{') (indent Any $ symbolic '}') $
+    indent Gt body
  where
   body = do
     args <- some ident
@@ -98,8 +104,8 @@ plet = do
   name <- ident
   ty <- optional (symbolic ':' *> ty)
   symbolic '='
-  defn <- localIndentation Gt (absoluteIndentation expr)
-  Let name (maybe defn (Annotate defn) ty) <$> localIndentation Eq (absoluteIndentation expr)
+  defn <- indent Gt (abs expr)
+  Let name (maybe defn (Annotate defn) ty) <$> indent Eq (abs expr)
 
 term :: Parser (Term Text)
 term =
@@ -108,28 +114,38 @@ term =
     , closure <?> "closure"
     , plet <?> "let"
     , Var <$> ident <?> "identifier"
-    , between (symbolic '(') (symbolic ')') (localIndentation Any expr)
+    , between (symbolic '(') (symbolic ')') (indent Any expr)
     ]
 
 expr :: Parser (Term Text)
-expr = app <$> some1 term
+expr = do
+  e <- app <$> some1 term
+  maybe e (Handle e) <$> optional (abs handle)
  where
-  app = \case
-    term :| [] -> term
-    terms -> foldl1 App terms
+   handle = (localTokenMode (const Any) $ reserve "handle") *> some (indent Gt $ abs handler)
+     
+   handler = do
+     name <- ident
+     args <- many ident
+     symbolic '='
+     body <- expr
+     return (name, foldr Abs body args)
+
+   app = \case
+     term :| [] -> term
+     terms -> foldl1 App terms
 
 fnDefn :: Parser (FnDefn Text)
 fnDefn = localTokenMode (const Gt) $ do
-  localTokenMode (const Ge) $ reserve "fn"
+  tokenGe $ reserve "fn"
   name <- ident
-  sig <- symbolic ':' *> localIndentation Gt (absoluteIndentation ty)
-  constraints <- optional (pwhere *> some constraint)
-  eq
-  body <- localIndentation Gt (absoluteIndentation expr)
+  sig <- symbolic ':' *> indent Gt (abs ty)
+  constraints <- optional (tokenGe $ reserve "where" *> some constraint)
+  tokenGe $ symbolic '='
+  body <- indent Gt (abs expr)
   return $ FnDefn name [] sig (fromMaybe [] constraints) body
  where
-  eq = localTokenMode (const Ge) (symbolic '=')
-  pwhere = localTokenMode (const Ge) (reserve "where")
+  tokenGe = localTokenMode (const Ge)
   constraint = do
     var <- ident
     symbolic ':'

@@ -26,7 +26,7 @@ extra-source-files:
 
 library
     exposed-modules:
-        Interp.CBV
+        Interp.Direct
         AST
         Seq
         Lib
@@ -38,6 +38,7 @@ library
         CC.Func
         CC.Control
         CC.CPS
+        Interp.CBV
         Text.Trifecta.Indentation
 
     -- Modules included in this library but not exported.

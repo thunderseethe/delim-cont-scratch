@@ -1,7 +1,4 @@
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -24,6 +21,7 @@ data Term a
   | Abs a (Term a)
   | App (Term a) (Term a)
   | Let a (Term a) (Term a)
+  | Handle (Term a) [(a, Term a)]
   | Annotate (Term a) Ty
   deriving (Show, Eq)
 

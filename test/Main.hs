@@ -15,6 +15,7 @@ import Test.Framework hiding (Fun)
 import Text.Heredoc
 import Text.Trifecta (parseFromFile, rendered)
 import qualified Text.Trifecta.Result as Result
+import Control.Exception (handle)
 
 forgetfulEither :: Result.Result p -> Either () p
 forgetfulEither (Result.Success p) = Right p
@@ -100,8 +101,8 @@ test_parseIndentedLetDefn =
     (unwrap $
         parseExpr
           [str|let k =
-        |  { x y => x }
-        |k 10|])
+              |  { x y => x }
+              |k 10|])
 
 test_parseIndentedLetBody =
   assertEqual
@@ -128,6 +129,15 @@ test_parseIndentedClosuresInLet =
       [str|let f =
           |  { x => foldr alt x }
           |{ y z => f (y z) }|])
+
+test_parseHandleExpr =
+  assertEqual
+    (Handle (Var "add" <@> (Var "get" <@> Var "unit") <@> Num 4) [("get", Abs "k" $ Abs "resume" (Num 4))])
+    (unwrap $ parseExpr
+      [str|add (get unit) 4
+          |handle
+          |  get k resume = 4
+          |])
 
 test_parseBaseIntTy =
   assertEqual

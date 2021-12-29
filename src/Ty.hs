@@ -21,5 +21,4 @@ data Ty
 makeBaseFunctor ''Ty
 
 infixr 9 ->>
-
 x ->> y = Fun x y

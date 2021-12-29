@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
-module Prompt(P, Prompt, runP, newPromptName, eqPrompt) where
+module Prompt(P, Prompt(..), runP, newPromptName, eqPrompt) where
 
 import Data.Bifunctor
 import Data.Type.Equality
