@@ -14,7 +14,7 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Debug.Trace (trace)
 import Prompt
-import Ty (BaseTy (BaseInt), Ty (Base, Fun))
+import Ty (BaseTy (BaseI64), Ty (Base), (->>))
 
 lllet :: Text -> LLTerm -> LLTerm -> LLTerm
 lllet x defn body = LLApp (LLVal $ VAbs x body) defn
@@ -40,6 +40,7 @@ compile (Program funs effs) = Comp main sigLst funs'
     case term of
       Var x -> LLVar x
       Num n -> LLVal (VNum n)
+      Unit -> LLVal VUnit
       Annotate body _ -> compileTerm body
       Let arg param body -> compileTerm (Abs arg body <@> param)
       Abs arg body -> LLVal $ VAbs arg (compileTerm body)
@@ -65,6 +66,7 @@ pushUnderAbs f t =
 {- We separate values as a separate datatype as they can be stored in an environment. Since we're CBV arbitrary terms cannot be stored in env -}
 data Val
   = VNum Int
+  | VUnit
   | VAbs Text LLTerm
   deriving (Show)
 
@@ -82,6 +84,7 @@ showsTerm = go (9 :: Int)
  where
   go prec t =
     case t of
+      LLVal VUnit -> ("{}" ++)
       LLVal (VNum n) -> shows n
       LLVal (VAbs arg body) -> ('(' :) . ('\\' :) . (Text.unpack arg ++) . (". " ++) . go prec body . (')' :)
       LLVar var -> (Text.unpack var ++)
@@ -100,6 +103,7 @@ type Ctx ans = HashMap Text (RuntimeVal ans)
 
 data RuntimeVal ans
   = RunInt Int
+  | RunUnit
   | RunPrompt (Prompt ans (RuntimeVal ans))
   | RunFun (RuntimeVal ans -> CC ans (RuntimeVal ans))
 
@@ -107,6 +111,7 @@ translate :: Ctx ans -> LLTerm -> CC ans (RuntimeVal ans)
 translate ctx t =
   case t of
     LLVar x -> return $ fromMaybe (error ("Undefined variable " ++ Text.unpack x)) $ ctx !? x
+    LLVal VUnit -> return RunUnit
     LLVal (VNum n) -> return (RunInt n)
     LLVal (VAbs arg body) -> return $ RunFun $ \x -> translate (HashMap.insert arg x ctx) body
     LLApp e1 e2 -> do
@@ -140,6 +145,7 @@ evaluate prog = runCC $ do
   val <- trace (showsTerm main "") $ translate ctx main
   return $ case val of
     RunPrompt (Prompt p) -> Text.concat ["Prompt #", Text.pack $ show p]
+    RunUnit -> "{}"
     RunInt n -> Text.pack (show n)
     RunFun _ -> "<function>"
  where
@@ -163,12 +169,13 @@ binIntOp op = RunFun (\(RunInt m) -> pure $ RunFun $ \(RunInt n) -> pure $ RunIn
 valToRuntime :: Ctx ans -> Val -> RuntimeVal ans
 valToRuntime ctx v =
   case v of
+    VUnit -> RunUnit
     VNum n -> RunInt n
     VAbs arg body -> RunFun (\x -> translate (HashMap.insert arg x ctx) body)
 
 testProgram :: Program Text
 testProgram = Program [main] [get]
  where
-  main = FnDefn "main" [] (Base BaseInt) [] $ Handle (Let "x" (Var "get" <@> Num 0) (Var "add" <@> Var "x" <@> Var "x")) [("get", Abs "n" (Var "resume" <@> (Var "add" <@> Var "n" <@> Num 1)))]
+  main = FnDefn "main" [] (Base BaseI64) [] $ Handle (Let "x" (Var "get" <@> Num 1) (Var "add" <@> Var "x" <@> Var "x")) [("get", Abs "n" (Var "resume" <@> (Var "add" <@> Var "n" <@> Num 1)))]
 
-  get = EffDefn "Const" [] [("get", Fun (Base BaseInt) (Base BaseInt))]
+  get = EffDefn "Const" [] [("get", Base BaseI64 ->> Base BaseI64)]

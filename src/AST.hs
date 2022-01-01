@@ -13,6 +13,7 @@ import Data.Text hiding (foldl', foldr)
 data Term a
   = Var a
   | Num Int
+  | Unit
   | Abs a (Term a)
   | App (Term a) (Term a)
   | Let a (Term a) (Term a)

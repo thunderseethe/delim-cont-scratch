@@ -73,7 +73,10 @@ indent :: IndentationRel -> Parser a -> Parser a
 indent = localIndentation
 
 baseTy :: Parser BaseTy
-baseTy = BaseInt <$ reserve "Int"
+baseTy = choice 
+  [ BaseI64 <$ reserve "I64"
+  , BaseUnit <$ highlight ReservedOperator (symbol "{}")
+  ]
 
 atomicTy :: Parser Ty
 atomicTy =
@@ -110,6 +113,7 @@ term :: Parser (Term Text)
 term =
   choice
     [ Num . fromIntegral <$> integer <?> "number literal"
+    , Unit <$ symbol "{}"
     , closure <?> "closure"
     , plet <?> "let"
     , Var <$> ident <?> "identifier"

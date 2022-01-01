@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 module Sema where
 
 import AST
@@ -7,24 +6,20 @@ import Control.Monad
 import Data.Hashable
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
-import Data.Text
 import Prelude hiding (lookup)
-
---data Ty = TInt | TFun Ty Ty
---    deriving (Eq, Show)
 
 type Ctx a = HashMap a Ty
 
-infer :: (Eq a, Hashable a) => Ctx a -> Term a -> Maybe Ty
+{-infer :: (Eq a, Hashable a) => Ctx a -> Term a -> Maybe Ty
 infer ctx = \case
   Var var -> HashMap.lookup var ctx
-  Num n -> Just (Base BaseInt)
+  Num _ -> Just (Base BaseInt)
   Abs arg body -> undefined
   App te te' -> undefined
-  Let v d te -> undefined
+  Let v d te -> undefined-}
 
 
-check :: (Eq a, Hashable a) => Ctx a -> Term a -> Ty -> Maybe Ty
+{-check :: (Eq a, Hashable a) => Ctx a -> Term a -> Ty -> Maybe Ty
 check ctx (Num _) (Base BaseInt) = Just (Base BaseInt)
 check ctx (Num _) _ = Nothing
 check ctx (Var var) goal = HashMap.lookup var ctx >>= (\ty -> if ty == goal then Just ty else Nothing)
@@ -37,4 +32,4 @@ check ctx (Let var defn body) goal =
     let
         ctx' = HashMap.foldr (\term ctx' -> _) ctx defns
      in _
-check ctx (App fun arg) goal = _
+check ctx (App fun arg) goal = _-}

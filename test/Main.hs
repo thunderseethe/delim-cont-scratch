@@ -6,7 +6,7 @@
 module Main where
 
 import AST
-import Parsing (expr, parseExpr, parseTy, parseFnDefn, replParse, parseEffDefn, parseProgram)
+import Parser (expr, parseExpr, parseTy, parseFnDefn, replParse, parseEffDefn, parseProgram)
 import Ty
 
 import Data.Either
@@ -39,6 +39,11 @@ test_parseNum =
   assertEqual
     (Num 3)
     (unwrap $ parseExpr "3")
+
+test_parseUnti =
+  assertEqual
+    Unit
+    (unwrap $ parseExpr "{}")
 
 test_parseApp =
   assertEqual
@@ -140,30 +145,30 @@ test_parseHandleExpr =
           |  get k resume = 4
           |])
 
-test_parseBaseIntTy =
+test_parseBaseI64Ty =
   assertEqual
-    (Base BaseInt)
-    (unwrap $ parseTy "Int")
+    (Base BaseI64)
+    (unwrap $ parseTy "I64")
 
 test_parseSingleFunTy =
   assertEqual
-    (Fun (Base BaseInt) (Base BaseInt))
-    (unwrap $ parseTy "Int -> Int")
+    (Fun (Base BaseI64) (Base BaseI64))
+    (unwrap $ parseTy "I64 -> I64")
 
 test_parseFunTyAssocsRight =
   assertEqual
-    (Fun (Base BaseInt) (Fun (Base BaseInt) (Fun (Base BaseInt) (Base BaseInt))))
-    (unwrap $ parseTy "Int -> Int -> Int -> Int")
+    (Fun (Base BaseI64) (Fun (Base BaseI64) (Fun (Base BaseI64) (Base BaseI64))))
+    (unwrap $ parseTy "I64 -> I64 -> I64 -> I64")
 
 test_unfinishedFunctionTypeIsParseError =
   assertEqual
     (Left ())
-    (forgetfulEither $ parseTy "Int ->")
+    (forgetfulEither $ parseTy "I64 ->")
 
 test_parseFnConstraintlessFnDef =
   assertEqual
-    (FnDefn "the_s_combinator" [] (Base BaseInt) [] (Abs "x" (Abs "y" (Abs "z" (Var "x" <@> Var "z" <@> (Var "y" <@> Var "z"))))))
-    (unwrap $ parseFnDefn "fn the_s_combinator : Int = {| x y z => x z (y z) |}")
+    (FnDefn "the_s_combinator" [] (Base BaseI64) [] (Abs "x" (Abs "y" (Abs "z" (Var "x" <@> Var "z" <@> (Var "y" <@> Var "z"))))))
+    (unwrap $ parseFnDefn "fn the_s_combinator : I64 = {| x y z => x z (y z) |}")
 
 sCombTy = (TyVar "a" ->> TyVar "b" ->> TyVar "c") ->> (TyVar "a" ->> TyVar "b") ->> TyVar "a" ->> TyVar "c"
 sCombAST = Abs "x" $ Abs "y" $ Abs "z" $ Var "x" <@> Var "z" <@> (Var "y" <@> Var "z")

@@ -1,7 +1,4 @@
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 module Ty where
@@ -9,7 +6,9 @@ module Ty where
 import Data.Text
 import Data.Functor.Foldable.TH
 
-data BaseTy = BaseInt
+data BaseTy 
+  = BaseI64
+  | BaseUnit
   deriving (Show, Eq)
 
 data Ty
@@ -21,4 +20,6 @@ data Ty
 makeBaseFunctor ''Ty
 
 infixr 9 ->>
+  
+(->>) :: Ty -> Ty -> Ty
 x ->> y = Fun x y
