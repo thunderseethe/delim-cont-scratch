@@ -34,6 +34,7 @@
 # Will suggest replacing "wibbleMany [myvar]" with "wibbleOne myvar"
 # - error: {lhs: "wibbleMany [x]", rhs: wibbleOne x}
 - ignore: {name: "Avoid lambda using `infix`"}
+- ignore: {name: "Use lambda-case"}
 
 
 # Turn on hints that are off by default

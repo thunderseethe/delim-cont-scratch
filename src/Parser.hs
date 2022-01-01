@@ -8,13 +8,9 @@ import Control.Monad (MonadPlus)
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Monad.Trans.Reader
 import Data.Char (isSpace)
-import Debug.Trace
-import Text.Parser.Char (CharParsing)
-import Text.Trifecta (TokenParsing)
 import Text.Trifecta hiding (Parser)
 import qualified Text.Trifecta as Trifecta
 import Text.Trifecta.Indentation
-import Control.Monad.Trans.State.Lazy (StateT(runStateT), get, put)
 
 newtype Parser a = Parser { runParser :: IndentedT Char (ReaderT Bool Trifecta.Parser) a }
   deriving (Functor, Applicative, Alternative, Monad, MonadPlus, CharParsing)

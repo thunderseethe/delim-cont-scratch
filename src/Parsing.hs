@@ -1,31 +1,31 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Parsing where
 
-import AST
+import AST hiding (effs, constraints, sig, args, body)
 import Control.Applicative
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.Reader (ReaderT (runReaderT))
-import Data.Functor.Foldable.TH (baseRulesType)
 import Data.HashSet (fromList)
 import Data.List.NonEmpty (NonEmpty ((:|)), some1)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text as Text
-import Debug.Trace
-import GHC.Generics (Par1 (unPar1))
-import Parser (Parser, newlineSensitive, runParser)
-import Prettyprinter (defaultLayoutOptions, hardline, layoutSmart, viaShow)
 import Prettyprinter.Render.Terminal
 import qualified Text.Parser.Token as Token
 import Text.Parser.Token.Highlight
 import Text.Parser.Token.Style
-import Text.Trifecta hiding (Parser, ident, reserve, runParser, symbol)
+import Text.Trifecta hiding (doc, Parser, ident, reserve, runParser, symbol)
 import qualified Text.Trifecta as Trifecta
 import Text.Trifecta.Indentation
 import Ty
 import Prelude hiding (abs)
+import Prettyprinter (viaShow, hardline)
+import Control.Monad (MonadPlus)
+
+newtype Parser a = Parser { runParser :: IndentedT Char Trifecta.Parser a }
+  deriving (Functor, Applicative, Alternative, Monad, MonadPlus, Parsing, CharParsing, TokenParsing, IndentationParsing)
+
 
 identStyle :: IdentifierStyle Parser
 identStyle =
@@ -89,12 +89,12 @@ ty = foldr1 Fun <$> funTys
 
 closure :: Parser (Term Text)
 closure =
-  between (symbolic '{') (indent Any $ symbolic '}') $
+  between (symbol "{|") (indent Any $ symbol "|}") $
     indent Gt body
  where
   body = do
     args <- some ident
-    symbol "=>"
+    _ <- symbol "=>"
     e <- expr
     return $ foldr Abs e args
 
@@ -102,10 +102,10 @@ plet :: Parser (Term Text)
 plet = do
   reserve "let"
   name <- ident
-  ty <- optional (symbolic ':' *> ty)
-  symbolic '='
+  ty' <- optional (symbolic ':' *> ty)
+  _ <- symbolic '='
   defn <- indent Gt (abs expr)
-  Let name (maybe defn (Annotate defn) ty) <$> indent Eq (abs expr)
+  Let name (maybe defn (Annotate defn) ty') <$> indent Eq (abs expr)
 
 term :: Parser (Term Text)
 term =
@@ -122,17 +122,17 @@ expr = do
   e <- app <$> some1 term
   maybe e (Handle e) <$> optional (abs handle)
  where
-   handle = (localTokenMode (const Any) $ reserve "handle") *> some (indent Gt $ abs handler)
-     
+   handle = localTokenMode (const Any) (reserve "handle") *> some (indent Gt $ abs handler)
+
    handler = do
      name <- ident
      args <- many ident
-     symbolic '='
+     _ <- symbolic '='
      body <- expr
      return (name, foldr Abs body args)
 
    app = \case
-     term :| [] -> term
+     t :| [] -> t
      terms -> foldl1 App terms
 
 fnDefn :: Parser (FnDefn Text)
@@ -141,14 +141,14 @@ fnDefn = localTokenMode (const Gt) $ do
   name <- ident
   sig <- symbolic ':' *> indent Gt (abs ty)
   constraints <- optional (tokenGe $ reserve "where" *> some constraint)
-  tokenGe $ symbolic '='
+  _ <- tokenGe $ symbolic '='
   body <- indent Gt (abs expr)
   return $ FnDefn name [] sig (fromMaybe [] constraints) body
  where
   tokenGe = localTokenMode (const Ge)
   constraint = do
     var <- ident
-    symbolic ':'
+    _ <- symbolic ':'
     classes <- sepBy1 ident (symbolic ',')
     return (var, classes)
 
@@ -163,7 +163,7 @@ effDefn = do
  where
   signature = do
     name <- ident
-    symbolic ':'
+    _ <- symbolic ':'
     sig <- ty
     return (name, sig)
 
@@ -174,7 +174,7 @@ program = foldr build (Program [] []) <$> some1 (choice [Left <$> effDefn, Right
   build (Right fn) (Program fns effs) = Program (fn : fns) effs
 
 unParse :: Parser a -> Trifecta.Parser a
-unParse = flip runReaderT False . unIndent . runParser
+unParse = unIndent . runParser
 
 parseExpr :: Text -> Result (Term Text)
 parseExpr = parseText (unParse (skipMany space *> expr)) mempty
@@ -191,6 +191,7 @@ parseEffDefn = parseText (unParse (skipMany space *> effDefn)) mempty
 parseProgram :: Text -> Result (Program Text)
 parseProgram = parseText (unParse (skipMany space *> program)) mempty
 
+replParse :: Show a => Parser a -> Text -> IO ()
 replParse p txt =
   case parseText (unParse p) mempty txt of
     Success e -> putDoc (viaShow e <> hardline)

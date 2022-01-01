@@ -7,12 +7,7 @@ module AST where
 
 import Ty
 import Data.Functor.Foldable.TH
-import Data.List
-import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Text hiding (foldl', foldr)
-import Data.Functor.Foldable
-import Data.HashMap.Strict (HashMap)
-import qualified Data.List as Prelude
 
 
 data Term a

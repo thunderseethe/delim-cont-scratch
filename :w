@@ -2,7 +2,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 {- HLINT ignore "Redundant bracket" -}
-{- HLINT ignore "Use camelCase" -}
 module Main where
 
 import AST
@@ -58,17 +57,17 @@ test_parseClosure1Arg =
 test_parseClosureMutliArgs =
   assertEqual
     (Abs "x" $ Abs "y" $ Abs "z" $ Var "x" <@> Var "z" <@> (Var "y" <@> Var "z"))
-    (unwrap $ parseExpr "{| x y z => x z (y z) |}")
+    (unwrap $ parseExpr "{ x y z => x z (y z) }")
 
 test_parseIndentedClosure =
   assertEqual
     (Abs "x" $ Var "f" <@> Var "x" <@> Var "x")
     (unwrap $
         parseExpr
-          [str|{|
+          [str|{
         |  x =>
         |  f x x
-        ||}|])
+        |}|])
 
 test_parseClosureFailsWithEqIndentation =
   assertLeft
@@ -102,7 +101,7 @@ test_parseIndentedLetDefn =
     (unwrap $
         parseExpr
           [str|let k =
-              |  {| x y => x |}
+              |  { x y => x }
               |k 10|])
 
 test_parseIndentedLetBody =
@@ -128,8 +127,8 @@ test_parseIndentedClosuresInLet =
     (Let "f" (Abs "x" (Var "foldr" <@> Var "alt" <@> Var "x")) (Abs "y" (Abs "z" (Var "f" <@> (Var "y" <@> Var "z")))))
     (unwrap $ parseExpr
       [str|let f =
-          |  {| x => foldr alt x |}
-          |{| y z => f (y z) |}|])
+          |  { x => foldr alt x }
+          |{ y z => f (y z) }|])
 
 test_parseHandleExpr =
   assertEqual
@@ -163,7 +162,7 @@ test_unfinishedFunctionTypeIsParseError =
 test_parseFnConstraintlessFnDef =
   assertEqual
     (FnDefn "the_s_combinator" [] (Base BaseInt) [] (Abs "x" (Abs "y" (Abs "z" (Var "x" <@> Var "z" <@> (Var "y" <@> Var "z"))))))
-    (unwrap $ parseFnDefn "fn the_s_combinator : Int = {| x y z => x z (y z) |}")
+    (unwrap $ parseFnDefn "fn the_s_combinator : Int = { x y z => x z (y z) }")
 
 sCombTy = (TyVar "a" ->> TyVar "b" ->> TyVar "c") ->> (TyVar "a" ->> TyVar "b") ->> TyVar "a" ->> TyVar "c"
 sCombAST = Abs "x" $ Abs "y" $ Abs "z" $ Var "x" <@> Var "z" <@> (Var "y" <@> Var "z")
@@ -174,7 +173,7 @@ test_parseFnConstrainedFnDefn =
       sCombTy
       [("a", ["Show", "Eq"]), ("b", ["Hash"])] 
       sCombAST)
-    (unwrap $ parseFnDefn "fn hash_something : (a -> b -> c) -> (a -> b) -> a -> c where a : Show, Eq b: Hash = {| x y z => x z (y z) |}")
+    (unwrap $ parseFnDefn "fn hash_something : (a -> b -> c) -> (a -> b) -> a -> c where a : Show, Eq b: Hash = { x y z => x z (y z) }")
 
 test_parseIndentedFnDefn =
   assertEqual
@@ -190,7 +189,7 @@ test_parseIndentedFnDefn =
           |where
           |  a : Eq, Show
           |  b : Hash
-          |= {| x y z => x z (y z) |}
+          |= { x y z => x z (y z) }
           |])
 
 test_parseUnindentedFnFails =
@@ -204,7 +203,7 @@ test_parseUnindentedFnFails =
           |where
           |a : Eq, Show
           |b : Hash
-          |= {| x y z => x z (y z) |}
+          |= { x y z => x z (y z) }
           |])
 
 test_parseIndentedEffDefn =
@@ -247,7 +246,7 @@ test_parseProgram =
           |where
           |  a : Eq, Show
           |  b : Hash
-          |= {| x y z => x z (y z) |}
+          |= { x y z => x z (y z) }
           |
           |eff State s where
           |  get : s -> s
@@ -256,4 +255,4 @@ test_parseProgram =
 
 main = htfMain htf_thisModulesTests
 
-example = replParse expr "let x = let y = 4 in y in {| y => x |}"
+example = replParse expr "let x = let y = 4 in y in { y => x }"
