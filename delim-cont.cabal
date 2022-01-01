@@ -32,7 +32,6 @@ library
         Lib
         Prompt
         Parser
-        Parsing
         Ty
         CC.Frame
         CC.Func
@@ -48,8 +47,6 @@ library
         base ^>=4.14.2.0
         ,composition ^>= 1.0.2.2
         ,hashable ^>= 1.3.0.0
-        ,HMap ^>= 1.3
-        ,megaparsec ^>= 9.0.1
         ,parsers ^>= 0.12.10
         ,prettyprinter ^>= 1.7.1
         ,prettyprinter-ansi-terminal ^>= 1.1.3
