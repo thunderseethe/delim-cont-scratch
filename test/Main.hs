@@ -150,6 +150,21 @@ test_parseBaseI64Ty =
     (Base BaseI64)
     (unwrap $ parseTy "I64")
 
+test_parseTyVar =
+  assertEqual
+    (TyVar "a")
+    (unwrap $ parseTy "a")
+
+test_parseTyVarLonger =
+  assertEqual
+    (TyVar "_a_'longer_ty_'var_")
+    (unwrap $ parseTy "_a_'longer_ty_'var_")
+
+test_parseTyVarFailsWithUppercaseLetter =
+  assertEqual
+    (Left ())
+    (forgetfulEither $ parseTy "a_bWhoops")
+
 test_parseSingleFunTy =
   assertEqual
     (Fun (Base BaseI64) (Base BaseI64))

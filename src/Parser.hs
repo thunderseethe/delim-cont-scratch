@@ -9,7 +9,7 @@ import Control.Applicative
 import Data.HashSet (fromList)
 import Data.List.NonEmpty (NonEmpty ((:|)), some1)
 import Data.Maybe (fromMaybe)
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import Prettyprinter.Render.Terminal
 import qualified Text.Parser.Token as Token
 import Text.Parser.Token.Highlight
@@ -21,10 +21,14 @@ import Ty
 import Prelude hiding (abs)
 import Prettyprinter (viaShow, hardline)
 import Control.Monad (MonadPlus)
+import Data.Char (isLower, isNumber)
 
 newtype Parser a = Parser { runParser :: IndentedT Char Trifecta.Parser a }
   deriving (Functor, Applicative, Alternative, Monad, MonadPlus, Parsing, CharParsing, TokenParsing, IndentationParsing)
 
+
+(<||>) :: (Char -> Bool) -> (Char -> Bool) -> Char -> Bool
+(<||>) = liftA2 (||)
 
 identStyle :: IdentifierStyle Parser
 identStyle =
@@ -37,8 +41,19 @@ identStyle =
     , _styleReservedHighlight = ReservedIdentifier
     }
 
-tyStyle :: IdentifierStyle Parser
-tyStyle =
+tyVarStyle :: IdentifierStyle Parser
+tyVarStyle =
+  IdentifierStyle
+    { _styleName = "type variable"
+    , _styleStart = lower <|> char '_'
+    , _styleLetter = satisfy (isLower <||> isNumber) <|> oneOf "_'"
+    , _styleReserved = fromList []
+    , _styleHighlight = Identifier
+    , _styleReservedHighlight = ReservedIdentifier
+    }
+
+tyNameStyle :: IdentifierStyle Parser
+tyNameStyle =
   IdentifierStyle
     { _styleName = "type name"
     , _styleStart = upper
@@ -59,6 +74,18 @@ commentStyle =
 
 ident :: Parser Text
 ident = Token.ident identStyle
+
+tyVar :: Parser Text
+tyVar = fmap pack $ token $ try $ do
+  name <- highlight Identifier ((:) <$> (lower <|> char '_') <*> many (satisfy (isLower <||> isNumber) <|> oneOf "_'")) <?> "type variable"
+  notFollowedBy upper
+  return name
+
+    --, _styleStart = lower <|> char '_'
+    --, _styleLetter = satisfy (isLower <||> isNumber) <|> oneOf "_'"
+
+tyName :: Parser Text
+tyName = Token.ident tyNameStyle
 
 reserve :: Text -> Parser ()
 reserve = Token.reserveText identStyle
@@ -81,7 +108,7 @@ baseTy = choice
 atomicTy :: Parser Ty
 atomicTy =
   (Base <$> baseTy)
-    <|> (TyVar <$> ident)
+    <|> (TyVar <$> tyVar)
     <|> parens (localIndentation Any ty)
 
 ty :: Parser Ty
