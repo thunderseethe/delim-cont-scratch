@@ -23,3 +23,6 @@ infixr 9 ->>
   
 (->>) :: Ty -> Ty -> Ty
 x ->> y = Fun x y
+
+unitTy :: Ty
+unitTy = Base BaseUnit

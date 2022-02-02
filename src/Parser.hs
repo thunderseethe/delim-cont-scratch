@@ -81,9 +81,6 @@ tyVar = fmap pack $ token $ try $ do
   notFollowedBy upper
   return name
 
-    --, _styleStart = lower <|> char '_'
-    --, _styleLetter = satisfy (isLower <||> isNumber) <|> oneOf "_'"
-
 tyName :: Parser Text
 tyName = Token.ident tyNameStyle
 

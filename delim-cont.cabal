@@ -29,6 +29,7 @@ library
         Interp.Direct
         AST
         Seq
+        Sema
         Lib
         Prompt
         Parser
@@ -57,14 +58,16 @@ library
         ,unordered-containers ^>= 0.2.14.0
     hs-source-dirs:   src
     default-language: Haskell2010
-    ghc-options: -Wall
+    ghc-options: -Wall -Wno-name-shadowing
 
 test-suite test
     type: exitcode-stdio-1.0
     hs-source-dirs: test
     main-is: Main.hs
+    other-modules:
+      SemaTest, ParserTest
     default-language: Haskell2010
-    build-depends: base, delim-cont, HTF, text, trifecta, heredoc
+    build-depends: base, delim-cont, HTF, text, trifecta, heredoc, unordered-containers
 
 executable delim-cont
     main-is:          Main.hs
